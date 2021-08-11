@@ -6,6 +6,7 @@ import { getUserInfo } from "../../services/user.service";
 import { Person, Menu as MenuIcon } from "@material-ui/icons";
 import authService from "../../services/auth.service";
 import { useHistory } from "react-router-dom";
+import { useAuthContext } from "@asgardeo/auth-react";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -24,6 +25,7 @@ function HomeView() {
     const { enqueueSnackbar } = useSnackbar();
     const history = useHistory();
     const classes = useStyles();
+    const { signOut } = useAuthContext();
 
     const [user, setUser] = useState();
     const [loading, setLoading] = useState(false);
@@ -36,9 +38,9 @@ function HomeView() {
             .finally(() => setLoading(false));
     }, []);
 
-    const logout = () => {
-        authService.logout();
-        history.push("/");
+    const handleLogout = () => {
+        signOut()
+            .then(() => history.push("/"));
     }
 
     return (
@@ -51,7 +53,7 @@ function HomeView() {
                     <Typography variant="h6" className={classes.title}>
                         Demo
                     </Typography>
-                    <Button color="inherit" onClick={logout} className={classes.logoutBtn}>Logout</Button>
+                    <Button color="inherit" onClick={handleLogout} className={classes.logoutBtn}>Logout</Button>
                 </Toolbar>
             </AppBar>
             <Grid container

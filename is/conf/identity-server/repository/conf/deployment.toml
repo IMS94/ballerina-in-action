@@ -34,3 +34,23 @@ validationQuery="SELECT 1"
 [keystore.primary]
 file_name = "wso2carbon.jks"
 password = "wso2carbon"
+
+[cors]
+allow_generic_http_requests = true
+allow_any_origin = false
+allowed_origins = [
+    "http://localhost:3000"
+]
+allow_subdomains = false
+supported_methods = [
+    "GET",
+    "POST",
+    "HEAD",
+    "OPTIONS"
+]
+support_any_header = true
+supported_headers = []
+exposed_headers = []
+supports_credentials = true
+max_age = 3600
+tag_requests = false
