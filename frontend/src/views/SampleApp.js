@@ -1,11 +1,10 @@
 import { useAuthContext } from "@asgardeo/auth-react";
 import { CircularProgress, Container, makeStyles } from "@material-ui/core";
 import { useEffect, useState } from "react";
-import { Route, Switch } from "react-router-dom";
+import { Redirect, Route, Switch } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoginView from "./login";
 import HomeView from "./home";
-
 
 
 const useStyles = makeStyles((theme) => ({
@@ -18,7 +17,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function SampleApp() {
     const classes = useStyles();
-    const { isAuthenticated } = useAuthContext();
+    const { isAuthenticated, getIDToken, getBasicUserInfo } = useAuthContext();
 
     const [authenticated, setAuthenticated] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -31,6 +30,14 @@ export default function SampleApp() {
             .finally(() => setLoading(false));
     }, []);
 
+    useEffect(async () => {
+        if (authenticated) {
+            let jwt = await getIDToken();
+            let user = await getBasicUserInfo();
+
+            console.log("JWT", jwt, user);
+        }    
+    }, [authenticated]);
 
     return (
         <Container maxWidth={false} className={classes.root} disableGutters>
@@ -40,9 +47,7 @@ export default function SampleApp() {
                 <Switch>
                     <Route path="/login" component={LoginView} />
                     <ProtectedRoute path="/home" component={HomeView} />
-                    <Route>
-                        Not Found!
-                    </Route>
+                    <Redirect to="/login" />
                 </Switch>
             )}
         </Container>

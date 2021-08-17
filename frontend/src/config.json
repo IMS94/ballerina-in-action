@@ -2,5 +2,6 @@
     "clientID": "4uuV_wq2hjLS5SkHVX16Pbi7HtAa",
     "serverOrigin": "https://localhost:9443",
     "signInRedirectURL": "http://localhost:3000/login",
-    "signOutRedirectURL": "http://localhost:3000/login"
+    "signOutRedirectURL": "http://localhost:3000/login",
+    "scope": ["openid", "profile", "address"]
 }
