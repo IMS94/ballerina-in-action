@@ -3,6 +3,13 @@ import ballerina/log;
 import ballerina/sql;
 import ballerinax/mysql;
 
+configurable string mysqlHost = "localhost";
+configurable int mysqlPort = 3306;
+configurable string mysqlUser = "root";
+configurable string mysqlPassword = "Imesha123";
+configurable string mysqlDatabase = "bal_productdb";
+
+
 type Product record {|
     int id?;
     string productName;
@@ -94,7 +101,7 @@ isolated service /products on new http:Listener(8080) {
                 return currentMySqlClient;
             }
 
-            mysql:Client mysqlClient = check new ("localhost", user = "root", password = "Imesha123", database = "bal_productdb");
+            mysql:Client mysqlClient = check new (mysqlHost, user = mysqlUser, password = mysqlPassword, database = mysqlDatabase);
             self.cl = mysqlClient;
             return mysqlClient;
         }
