@@ -3,6 +3,8 @@ import ballerina/log;
 import ballerina/sql;
 import ballerinax/mysql;
 
+configurable int httpPort = 8080;
+
 configurable string mysqlHost = "localhost";
 configurable int mysqlPort = 3306;
 configurable string mysqlUser = "root";
@@ -17,7 +19,46 @@ type Product record {|
     string currency;
 |};
 
-isolated service /products on new http:Listener(8080) {
+@http:ServiceConfig{
+    auth: [
+        // {
+        //     jwtValidatorConfig: {
+        //         signatureConfig: {
+        //             certFile: "/home/imesha/Documents/WSO2/Ballerina/Projects/microservices_reactjs/product_service/is.cert"
+        //         },
+        //         // signatureConfig: {
+        //         //     jwksConfig: {
+        //         //         url: "https://localhost:9443/oauth2/jwks",
+        //         //         clientConfig: {
+        //         //             secureSocket: {
+        //         //                 // disable: true,
+        //         //                 cert: "./is.cert"
+        //         //             }
+        //         //         }
+        //         //     }
+        //         // },
+        //         issuer: "https://localhost:9443/oauth2/token",
+        //         audience: "7ogFMwLjsQWL2YHlAi7yjPzkkuca",
+        //         scopeKey: "groups"
+        //     },
+        //     scopes: ["manager"]
+        // },
+        {
+            oauth2IntrospectionConfig: {
+                url: "https://localhost:9443/oauth2/introspect",
+                clientConfig: {
+                    customHeaders: {"Authorization": "Basic YWRtaW46YWRtaW4="},
+                    secureSocket: {
+                        // disable: true
+                        cert: "./is.cert"
+                    }
+                }
+            },
+            scopes: ["openid"]
+        }
+    ]
+}
+isolated service /products on new http:Listener(httpPort) {
 
     private mysql:Client? cl = ();
 
