@@ -8,9 +8,8 @@ configurable int httpPort = 8080;
 configurable string mysqlHost = "localhost";
 configurable int mysqlPort = 3306;
 configurable string mysqlUser = "root";
-configurable string mysqlPassword = "Imesha123";
-configurable string mysqlDatabase = "bal_productdb";
-
+configurable string mysqlPassword = "Admin123";
+configurable string mysqlDatabase = "ballerina_productdb";
 
 type Product record {|
     int id?;
@@ -19,59 +18,39 @@ type Product record {|
     string currency;
 |};
 
-@http:ServiceConfig{
+@http:ServiceConfig {
     auth: [
-        // {
-        //     jwtValidatorConfig: {
-        //         signatureConfig: {
-        //             certFile: "/home/imesha/Documents/WSO2/Ballerina/Projects/microservices_reactjs/product_service/is.cert"
-        //         },
-        //         // signatureConfig: {
-        //         //     jwksConfig: {
-        //         //         url: "https://localhost:9443/oauth2/jwks",
-        //         //         clientConfig: {
-        //         //             secureSocket: {
-        //         //                 // disable: true,
-        //         //                 cert: "./is.cert"
-        //         //             }
-        //         //         }
-        //         //     }
-        //         // },
-        //         issuer: "https://localhost:9443/oauth2/token",
-        //         audience: "7ogFMwLjsQWL2YHlAi7yjPzkkuca",
-        //         scopeKey: "groups"
-        //     },
-        //     scopes: ["manager"]
-        // },
         {
-            oauth2IntrospectionConfig: {
-                url: "https://localhost:9443/oauth2/introspect",
-                clientConfig: {
-                    customHeaders: {"Authorization": "Basic YWRtaW46YWRtaW4="},
-                    secureSocket: {
-                        // disable: true
-                        cert: "./is.cert"
+            jwtValidatorConfig: {
+                signatureConfig: {
+                    jwksConfig: {
+                        url: "https://api.asgardeo.io/t/imeshaorg/oauth2/jwks"
                     }
                 }
-            },
-            scopes: ["openid"]
+            }
         }
     ]
 }
-isolated service /products on new http:Listener(httpPort) {
+service /products on new http:Listener(httpPort) {
 
-    private mysql:Client? cl = ();
+    # MySQL Client
+    private mysql:Client mysqlClient;
 
-    resource function get .() returns Product[]|error? {
-        mysql:Client mysqlClient = check self.getClient();
-        stream<Product, error?> prodStream = mysqlClient->query("select id, product_name as productName, price, currency from products", Product);
+    public function init() returns error? {
+        self.mysqlClient = check new (mysqlHost, user = mysqlUser, password = mysqlPassword, database = mysqlDatabase);
+    }
+
+    resource function get .() returns Product[]|http:InternalServerError {
+        stream<Product, error?> prodStream = self.mysqlClient->query(`select id, product_name as productName, price, currency from products`);
         Product[] products = [];
         error? e = prodStream.forEach(function(Product p) {
             products[products.length()] = p;
         });
 
         if e is error {
-            return e;
+            return <http:InternalServerError> {
+                body: e.message()
+            };
         }
 
         log:printDebug("Found products", products = products);
@@ -79,13 +58,12 @@ isolated service /products on new http:Listener(httpPort) {
         return products;
     }
 
-    resource function post .(@http:Payload Product product) returns record {|*http:Created;|}|error? {
-        mysql:Client cl = check self.getClient();
-        sql:ExecutionResult|sql:Error result = cl->execute(`insert into products (product_name, price, currency) values (${product.productName}, ${product.price}, ${product.currency})`);
+    resource function post .(@http:Payload Product product) returns http:Created|http:InternalServerError {
+        sql:ExecutionResult|sql:Error result = self.mysqlClient->execute(`insert into products (product_name, price, currency) values (${product.productName}, ${product.price}, ${product.currency})`);
         if result is sql:ExecutionResult {
             string|int? lastInsertId = result.lastInsertId;
             if lastInsertId is int|string {
-                return {
+                return <http:Created>{
                     headers: {
                         "location": string `products/${lastInsertId}`
                     }
@@ -96,55 +74,45 @@ isolated service /products on new http:Listener(httpPort) {
             log:printError("Error occurred while inserting a product", product = product, 'error = result);
         }
 
-        return error("Error occurred while creating product", 'error = result);
+        return <http:InternalServerError>{body: "Error occurred while creating product"};
     }
 
-    resource function put .(@http:Payload Product product) returns record {*http:Ok;}|error? {
-        mysql:Client cl = check self.getClient();
-        sql:ExecutionResult|sql:Error result = cl->execute(`update products set product_name = ${product.productName}, price = ${product.price}, currency=${product.currency} where id=${product?.id}`);
+    resource function put .(@http:Payload Product product) returns http:Ok|http:InternalServerError {
+        sql:ExecutionResult|sql:Error result = self.mysqlClient->execute(`update products set product_name = ${product.productName}, price = ${product.price}, currency=${product.currency} where id=${product?.id}`);
         if result is sql:ExecutionResult {
             log:printInfo("Updated product", product = product, result = result);
             int? affectedRowCount = result.affectedRowCount;
             if affectedRowCount is () {
-                return error("Product not updated", product = product);
+                return <http:InternalServerError>{body: "Product not updated"};
             }
+            return <http:Ok> {};
         } else {
             log:printError("Error occurred while updating a product", product = product, 'error = result);
-            return error("Error occurred when updating product", product = product, 'error = result);
+            return <http:InternalServerError>{body: "Error occurred when updating product"};
         }
     }
 
-    resource function get [int id]() returns Product?|error? {
-        mysql:Client mysqlClient = check self.getClient();
-        stream<Product, error?> prodStream = mysqlClient->query(`select id, product_name as productName, price, currency from products where id = ${id}`, Product);
-        record {|Product value;|}? next = check prodStream.next();
-        if next is () {
-            return;
+    resource function get [int id]() returns Product|http:NotFound|http:InternalServerError {
+        stream<Product, error?> prodStream = self.mysqlClient->query(`select id, product_name as productName, price, currency from products where id = ${id}`);
+        record {|Product value;|}?|error next = prodStream.next();
+        if next is error {
+            return <http:InternalServerError>{};
+        } else if next is () {
+            return <http:NotFound>{};
         } else {
             return next.value;
         }
     }
 
-    resource function delete [int id]() returns record {*http:Ok;}|error? {
-        mysql:Client cl = check self.getClient();
-        sql:ExecutionResult|sql:Error result = cl->execute(`delete from products where id=${id}`);
+    resource function delete [int id]() returns http:Ok|http:InternalServerError {
+        sql:ExecutionResult|sql:Error result = self.mysqlClient->execute(`delete from products where id=${id}`);
         if result is sql:Error {
-            log:printError("Error while deleting product", id = id, 'error = result);
-            return result;
+            log:printError("Error while deleting product", icd = id, 'error = result);
+            return <http:InternalServerError>{
+                body: result.message()
+            };
         }
         log:printInfo("Deleted product", id = id);
-    }
-
-    isolated function getClient() returns mysql:Client|error {
-        lock {
-            mysql:Client? currentMySqlClient = self.cl;
-            if currentMySqlClient is mysql:Client {
-                return currentMySqlClient;
-            }
-
-            mysql:Client mysqlClient = check new (mysqlHost, user = mysqlUser, password = mysqlPassword, database = mysqlDatabase);
-            self.cl = mysqlClient;
-            return mysqlClient;
-        }
+        return <http:Ok>{};
     }
 }
