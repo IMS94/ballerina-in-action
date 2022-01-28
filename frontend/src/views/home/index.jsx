@@ -2,18 +2,19 @@ import { Button, AppBar, Card, CardContent, CircularProgress, Container, Grid, I
 import { Alert, AlertTitle } from "@material-ui/lab";
 import { useSnackbar } from "notistack";
 import { useEffect, useState } from "react";
-import { getUserInfo } from "../../services/user.service";
 import { Person, Menu as MenuIcon } from "@material-ui/icons";
-import authService from "../../services/auth.service";
 import { useHistory } from "react-router-dom";
-import { useAuthContext } from "@asgardeo/auth-react";
+import { useAuthContext, HttpClient } from "@asgardeo/auth-react";
+import ProductService from "../../services/product.service";
+import ProductList from "./ProductList";
 
 const useStyles = makeStyles((theme) => ({
     root: {
         height: "100%"
     },
     grid: {
-        height: "100%"
+        height: "100%",
+        marginTop: theme.spacing(3),
     },
     logoutBtn: {
         marginLeft: "auto"
@@ -25,23 +26,28 @@ function HomeView() {
     const { enqueueSnackbar } = useSnackbar();
     const history = useHistory();
     const classes = useStyles();
-    const { signOut } = useAuthContext();
+    const { signOut, getBasicUserInfo } = useAuthContext();
 
-    const [user, setUser] = useState();
+    const [userInfo, setUserInfo] = useState();
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         setLoading(true);
-        getUserInfo()
-            .then(user => setUser(user))
-            .catch(e => enqueueSnackbar(e, { variant: "error" }))
+        getBasicUserInfo()
+            .then((info) => setUserInfo(info))
+            .catch((err) => enqueueSnackbar('Error occurred', { variant: "error" }))
             .finally(() => setLoading(false));
+
     }, []);
 
     const handleLogout = () => {
         signOut()
             .then(() => history.push("/"));
     }
+
+    const loadProducts = () => {
+
+    };
 
     return (
         <Container maxWidth={false} className={classes.root} disableGutters>
@@ -56,37 +62,48 @@ function HomeView() {
                     <Button color="inherit" onClick={handleLogout} className={classes.logoutBtn}>Logout</Button>
                 </Toolbar>
             </AppBar>
-            <Grid container
-                justifyContent={"center"}
-                alignContent={"center"}
+            <Grid
+                container
+                justifyContent="center"
                 className={classes.grid}
                 spacing={3}
             >
-                <Grid item xs={6}>
-                    <Card>
-                        <CardContent>
-                            {loading && (
-                                <CircularProgress />
-                            )}
+                <Grid item container spacing={3} alignContent={"flex-start"} xs={6}>
+                    <Grid item xs={12}>
+                        <Card>
+                            <CardContent>
+                                {loading && (
+                                    <CircularProgress />
+                                )}
 
-                            {!!user && (
-                                <Box
-                                    display="flex"
-                                    alignItems={"center"}
-                                    flexDirection="column"
-                                >
-                                    <Person />
-                                    <Box width={0.5}>
-                                        <Alert>
-                                            <AlertTitle>Hello {user.username}!</AlertTitle>
-                                            Welcome back!
-                                        </Alert>
+                                {!!userInfo && (
+                                    <Box
+                                        display="flex"
+                                        alignItems={"center"}
+                                        flexDirection="column"
+                                    >
+                                        <Person />
+                                        <Box width={0.5}>
+                                            <Alert>
+                                                <AlertTitle>Hello {userInfo.displayName}!</AlertTitle>
+                                                Welcome back!
+                                            </Alert>
+                                        </Box>
                                     </Box>
-                                </Box>
-                            )}
-                        </CardContent>
-                    </Card>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <Card>
+                            <CardContent>
+                                <ProductList />
+                            </CardContent>
+                        </Card>
+                    </Grid>
                 </Grid>
+
             </Grid>
         </Container>
     );

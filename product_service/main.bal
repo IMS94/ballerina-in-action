@@ -29,7 +29,10 @@ type Product record {|
                 }
             }
         }
-    ]
+    ],
+    cors: {
+        allowOrigins: ["http://localhost:3000"]
+    }
 }
 service /products on new http:Listener(httpPort) {
 

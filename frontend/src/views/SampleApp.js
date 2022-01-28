@@ -5,6 +5,7 @@ import { Redirect, Route, Switch } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoginView from "./login";
 import HomeView from "./home";
+import { setToken } from "../services/client";
 
 
 const useStyles = makeStyles((theme) => ({
@@ -17,39 +18,26 @@ const useStyles = makeStyles((theme) => ({
 
 export default function SampleApp() {
     const classes = useStyles();
-    const { isAuthenticated, getIDToken, getBasicUserInfo } = useAuthContext();
-
-    const [authenticated, setAuthenticated] = useState(false);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        setLoading(true);
-        isAuthenticated()
-            .then(auth => setAuthenticated(auth))
-            .catch(err => console.log(err))
-            .finally(() => setLoading(false));
-    }, []);
+    const { state, getIDToken, getBasicUserInfo } = useAuthContext();
 
     useEffect(async () => {
-        if (authenticated) {
+        if (state.isAuthenticated) {
             let jwt = await getIDToken();
             let user = await getBasicUserInfo();
 
+            setToken(jwt);
+
             console.log("JWT", jwt, user);
-        }    
-    }, [authenticated]);
+        }
+    }, [state.isAuthenticated]);
 
     return (
         <Container maxWidth={false} className={classes.root} disableGutters>
-            {loading && <CircularProgress />}
-
-            {!loading && (
-                <Switch>
-                    <Route path="/login" component={LoginView} />
-                    <ProtectedRoute path="/home" component={HomeView} />
-                    <Redirect to="/login" />
-                </Switch>
-            )}
+            <Switch>
+                <Route path="/login" component={LoginView} />
+                <ProtectedRoute path="/home" component={HomeView} />
+                <Redirect to="/login" />
+            </Switch>
         </Container>
     );
 }

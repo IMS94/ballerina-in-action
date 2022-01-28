@@ -1,9 +1,8 @@
 import { useAuthContext } from "@asgardeo/auth-react";
 import { Button, Card, CardContent, CardHeader, Container, Grid, makeStyles, TextField } from "@material-ui/core";
 import { useSnackbar } from "notistack";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useHistory } from "react-router-dom";
-import { login, setToken } from "../../services/auth.service";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -18,57 +17,17 @@ export default function LoginView(props) {
     const classes = useStyles();
     const history = useHistory();
     const { enqueueSnackbar } = useSnackbar();
-    const { signIn, isAuthenticated } = useAuthContext();
-
-    const [username, setUsername] = useState();
-    const [password, setPassword] = useState();
+    const { state, signIn } = useAuthContext();
 
     useEffect(() => {
-        if (getIsInitLogin()) {
-            signIn()
-                .then(res => console.log(res))
-                .catch(err => console.log(err))
-                .finally(() => setIsInitLogin(null));
+        if (state.isAuthenticated) {
+            history.push("/home");
         }
-
-        isAuthenticated()
-            .then(authenticated => {
-                console.log(authenticated);
-                if (authenticated) {
-                    history.push("/home");
-                }
-            }).catch(err => console.log(err));
-    }, []);
-
-    const getIsInitLogin = () => {
-        if (sessionStorage.getItem("isInitLogin") === "true") {
-            return true;
-        } else {
-            return false;
-        }
-    };
-
-    const setIsInitLogin = (value) => {
-        sessionStorage.setItem("isInitLogin", value)
-    };
+    }, [state.isAuthenticated]);
 
     const handleLogin = (e) => {
-        // e.preventDefault();
-        // login(username, password)
-        //     .then(response => {
-        //         setToken(response.jwt);
-        //         enqueueSnackbar("Login successful!", { variant: "success" });
-        //         history.push("/home");
-        //     })
-        //     .catch(e => {
-        //         enqueueSnackbar("Login failed!", { variant: "error" });
-        //     });
-        setIsInitLogin(true);
         signIn(() => console.log("Signed in!"))
-            .then(response => {
-                console.log(response);
-            })
-            .catch(err => console.log(err));
+            .catch(err => console.log('Login error', err));
     };
 
     return (
@@ -83,25 +42,6 @@ export default function LoginView(props) {
                             direction={"column"}
                             spacing={2}
                         >
-                            <Grid item>
-                                <TextField
-                                    variant="outlined"
-                                    placeholder={"Username"}
-                                    value={username ?? ""}
-                                    onChange={e => setUsername(e.target.value)}
-                                    fullWidth
-                                />
-                            </Grid>
-                            <Grid item>
-                                <TextField
-                                    variant="outlined"
-                                    placeholder={"Password"}
-                                    type={"password"}
-                                    value={password ?? ""}
-                                    onChange={e => setPassword(e.target.value)}
-                                    fullWidth
-                                />
-                            </Grid>
                             <Grid item>
                                 <Button
                                     variant={"contained"}
